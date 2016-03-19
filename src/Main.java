@@ -6,7 +6,7 @@ public class Main {
 	public Main (){
 		FileParser fp = new FileParser("Input/s1.txt");
 		fp.readFile();
-		KMeans km = new KMeans(15, KMeans.DistType.EUCLIDIAN);
+		KMeans km = new KMeans(15, KMeans.DistType.CHEBYSHEV);
 		km.addData(fp.getData());
 		km.initializeCentroids();
 		km.run();
