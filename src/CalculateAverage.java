@@ -11,7 +11,7 @@ public class CalculateAverage implements Callable<Point>{
 	}
 	
 	
-	
+	//calculates the average x and y of the cluster
 	@Override
 	public Point call() throws Exception {
 		// TODO Auto-generated method stub

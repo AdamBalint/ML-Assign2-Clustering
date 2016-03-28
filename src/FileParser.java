@@ -2,6 +2,7 @@ import java.awt.Point;
 import java.io.*;
 import java.util.ArrayList;
 
+//parses the file
 public class FileParser {
 
 	private String f;
@@ -16,6 +17,7 @@ public class FileParser {
 		f = file;
 	}
 	
+	//reads in the data
 	public void readFile(String file){
 		data = new ArrayList<Point>();
 		try {

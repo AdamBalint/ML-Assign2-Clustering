@@ -13,6 +13,7 @@ import java.util.concurrent.Future;
 
 public class KMeans {
 
+	//set up distance measures
 	public enum DistType {
 		EUCLIDEAN, CHEBYSHEV, MANHATTAN
 	}
@@ -32,6 +33,8 @@ public class KMeans {
 	public KMeans(DistType distType){
 		this(10, distType);
 	}
+	
+	//set up algorithm
 	public KMeans(int centroidNum, DistType distType){
 		centroids = new ArrayList<Point>();
 		numCentroids = centroidNum;
@@ -40,6 +43,8 @@ public class KMeans {
 		initBuckets();
 	}
 	
+	
+	//set up the initial centroids
 	public void initializeCentroids(){
 		Random r = new Random();
 		ArrayList<Integer> taken = new ArrayList<Integer>();
@@ -55,11 +60,15 @@ public class KMeans {
 		}
 	}
 	
+	//add data to use
 	public void addData(ArrayList<Point> data){
 		this.data = data;
 	}
 	
+	//run the algorithm
 	public void run(){
+		
+		//runs until no update to centroids
 		boolean update = true;
 		while (update){
 			update = false;
@@ -67,6 +76,7 @@ public class KMeans {
 			for (Point p : data){
 				int closestCentroid = 0;
 				double closestDistance = Double.MAX_VALUE;
+				//groups the data into the clusters
 				for (int i = 0; i < centroids.size(); i++){
 					double dist = getDistance(p, centroids.get(i));
 					
@@ -84,7 +94,7 @@ public class KMeans {
 			serv = Executors.newFixedThreadPool(20);
 			
 			for (ArrayList<Point> bucket : centroidBuckets){
-				
+				//recalculates the location of the centroids
 				try {
 					ret = serv.submit(new CalculateAverage(bucket));
 					Point tmp = ret.get();
@@ -100,6 +110,7 @@ public class KMeans {
 			}
 			serv.shutdown();
 			
+			//compares new centroids to old ones
 			update = compareCentroids(newCentroids);
 			if (update){
 				centroids = newCentroids;
@@ -108,6 +119,8 @@ public class KMeans {
 			System.out.println("Update: " + update);
 			
 		}
+		
+		//calculates the max distance in a cluster between 2 data points
 		double max = 0, min = Double.MAX_VALUE;
 		for (int i = 0; i < centroidBuckets.size(); i++){
 			for (int j = 0; j < centroidBuckets.get(i).size()-1; j++){
@@ -118,6 +131,7 @@ public class KMeans {
 				}
 			}
 		}
+		//calculates the minimum distance between 2 data points in different clusters
 		for (int i = 0; i < centroidBuckets.size()-1; i++){
 			for (int j = i+1; j < centroidBuckets.size(); j++){
 				for (int k = 0; k < centroidBuckets.get(i).size(); k ++){
@@ -129,13 +143,15 @@ public class KMeans {
 				}
 			}
 		}
+		//calculates the Dunn distance
 		dunnDist.add(min/max);
 		
-		
-		writeResults();
 		//write out final classification
+		writeResults();
+		
 	}
 	
+	//returns the distance based on the distance measure
 	private double getDistance(Point p, Point centroid) {
 		// TODO Auto-generated method stub
 		
@@ -154,6 +170,8 @@ public class KMeans {
 		
 		return dist;
 	}
+	
+	//compares the previous and current centroid locations
 	private boolean compareCentroids (ArrayList<Point> nCentroids){
 		for (Point nc : nCentroids){
 			if (!centroids.contains(nc))
@@ -162,6 +180,8 @@ public class KMeans {
 		return false;
 	}
 	
+	
+	//writes the results of the run to 3 files (classification, centroid location and summary file)
 	private void writeResults(){
 		
 		String prefix = dataSet + "_" + centroidBuckets.size() + "_" + distType + "_";
@@ -213,6 +233,7 @@ public class KMeans {
 		}
 	}
 	
+	//sets up the initial clusters
 	private void initBuckets(){
 		centroidBuckets = new ArrayList<ArrayList<Point>>();
 		for (int i = 0; i < numCentroids; i++){
@@ -220,10 +241,12 @@ public class KMeans {
 			centroidBuckets.add(tmp);
 		}		
 	}
+	
+	//sets the data
 	public void setDataSet(String s) {
 		dataSet = s;
 	}
-	
+
 	public double getAverageDunn(){
 		return averageDunn;
 	}
