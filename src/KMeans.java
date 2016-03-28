@@ -1,11 +1,9 @@
 import java.awt.Point;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.concurrent.ExecutionException;
@@ -16,7 +14,7 @@ import java.util.concurrent.Future;
 public class KMeans {
 
 	public enum DistType {
-		EUCLIDIAN, CHEBYSHEV, MINKOWSKI
+		EUCLIDEAN, CHEBYSHEV, MANHATTAN
 	}
 	
 	private ArrayList<Point> data;
@@ -24,9 +22,12 @@ public class KMeans {
 	private ArrayList<Point> centroids;
 	private ArrayList<ArrayList<Point>> centroidBuckets;
 	private DistType distType; 
+	private ArrayList<Double> dunnDist = new ArrayList<Double>();
+	private String dataSet = "";
+	private double averageDunn;
 	
 	public KMeans(){
-		this(10, DistType.EUCLIDIAN);
+		this(10, DistType.EUCLIDEAN);
 	}
 	public KMeans(DistType distType){
 		this(10, distType);
@@ -67,17 +68,8 @@ public class KMeans {
 				int closestCentroid = 0;
 				double closestDistance = Double.MAX_VALUE;
 				for (int i = 0; i < centroids.size(); i++){
-					double dist = Double.MAX_VALUE;
-					switch (distType){
-					case EUCLIDIAN:
-						dist = Math.sqrt(Math.pow(p.getX() - centroids.get(i).getX(),2)+Math.pow(p.getY()- centroids.get(i).getY(),2));
-						break;
-					case CHEBYSHEV:
-						dist = Math.max(Math.abs(p.getX() - centroids.get(i).getX()), Math.abs(p.getY() - centroids.get(i).getY()));
-						break;
-					case MINKOWSKI:
-						break;
-					}
+					double dist = getDistance(p, centroids.get(i));
+					
 					if (dist < closestDistance){
 						closestDistance = dist;
 						closestCentroid = i;
@@ -116,11 +108,52 @@ public class KMeans {
 			System.out.println("Update: " + update);
 			
 		}
+		double max = 0, min = Double.MAX_VALUE;
+		for (int i = 0; i < centroidBuckets.size(); i++){
+			for (int j = 0; j < centroidBuckets.get(i).size()-1; j++){
+				for (int k = j+1; k < centroidBuckets.get(i).size(); k++){
+					double dist = getDistance(centroidBuckets.get(i).get(j), centroidBuckets.get(i).get(k));
+					if (dist > max)
+						max = dist;
+				}
+			}
+		}
+		for (int i = 0; i < centroidBuckets.size()-1; i++){
+			for (int j = i+1; j < centroidBuckets.size(); j++){
+				for (int k = 0; k < centroidBuckets.get(i).size(); k ++){
+					for (int l = 0; l < centroidBuckets.get(j).size(); l++){
+						double dist = getDistance(centroidBuckets.get(i).get(k), centroidBuckets.get(j).get(l));
+						if (dist < min)
+							min = dist;
+						}
+				}
+			}
+		}
+		dunnDist.add(min/max);
+		
 		
 		writeResults();
 		//write out final classification
 	}
 	
+	private double getDistance(Point p, Point centroid) {
+		// TODO Auto-generated method stub
+		
+		double dist = Double.MAX_VALUE;
+		switch (distType){
+		case EUCLIDEAN:
+			dist = Math.sqrt(Math.pow(p.getX() - centroid.getX(),2)+Math.pow(p.getY()- centroid.getY(),2));
+			break;
+		case CHEBYSHEV:
+			dist = Math.max(Math.abs(p.getX() - centroid.getX()), Math.abs(p.getY() - centroid.getY()));
+			break;
+		case MANHATTAN:
+			dist = Math.abs(p.getX() - centroid.getX()) + Math.abs(p.getY() - centroid.getY());
+			break;
+		}
+		
+		return dist;
+	}
 	private boolean compareCentroids (ArrayList<Point> nCentroids){
 		for (Point nc : nCentroids){
 			if (!centroids.contains(nc))
@@ -130,9 +163,11 @@ public class KMeans {
 	}
 	
 	private void writeResults(){
+		
+		String prefix = dataSet + "_" + centroidBuckets.size() + "_" + distType + "_";
 		String timestamp = ((Long)System.nanoTime()).toString();
 		try {
-			FileOutputStream fout = new FileOutputStream (new File ("Output/Classification-" + timestamp + ".txt"));
+			FileOutputStream fout = new FileOutputStream (new File ("Output/" + prefix + timestamp + "-Classification.txt"));
 			BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fout));
 			for (int i = 0; i < centroidBuckets.size(); i++){
 				ArrayList<Point> ps = centroidBuckets.get(i);
@@ -144,13 +179,32 @@ public class KMeans {
 			bw.flush();
 			bw.close();
 			
-			fout = new FileOutputStream (new File ("Output/Centroids-" + timestamp + ".txt"));
+			fout = new FileOutputStream (new File ("Output/" + prefix + timestamp + "-Centroids.txt"));
 			bw = new BufferedWriter(new OutputStreamWriter(fout));
 			for (int i = 0; i < centroids.size(); i++){
 				Point p = centroids.get(i);	
 				bw.write(p.getX() + " " + p.getY() + " " + i);
 				bw.newLine();
 			}
+			bw.flush();
+			bw.close();
+			
+			fout = new FileOutputStream (new File ("Output/" + prefix + timestamp + "-Info.txt"));
+			bw = new BufferedWriter(new OutputStreamWriter(fout));
+			bw.write("Distance Type: " + distType);
+			bw.newLine();
+			bw.write("Centroids: " + centroidBuckets.size());
+			bw.newLine();
+			double avg = 0;
+			for (int i = 0; i < dunnDist.size(); i++){
+				//Point p = centroids.get(i);	
+				bw.write(i + ":\t" + dunnDist.get(i));
+				bw.newLine();
+				avg += dunnDist.get(i);
+			}
+			averageDunn = (avg/dunnDist.size());
+			bw.write("Average: \t" + averageDunn);
+			bw.newLine();
 			bw.flush();
 			bw.close();
 		} catch (IOException e) {
@@ -165,6 +219,13 @@ public class KMeans {
 			ArrayList<Point> tmp = new ArrayList<Point>();
 			centroidBuckets.add(tmp);
 		}		
+	}
+	public void setDataSet(String s) {
+		dataSet = s;
+	}
+	
+	public double getAverageDunn(){
+		return averageDunn;
 	}
 	
 }
